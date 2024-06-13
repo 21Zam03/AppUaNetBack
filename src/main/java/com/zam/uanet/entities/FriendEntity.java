@@ -5,15 +5,13 @@ import org.bson.types.ObjectId;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-@Document(collection = "comments")
+@Document(collection = "friends")
 @Data
-public class CommentEntity {
+public class FriendEntity {
 
     @Id
-    private ObjectId idComment;
-    private ObjectId idStudent;
-    private ObjectId idPost;
-    private String comment;
-    private boolean like;
+    private ObjectId userId;
+    private String status;
+    private String requestBy;
 
 }

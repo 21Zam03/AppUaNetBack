@@ -8,7 +8,7 @@ import org.springframework.data.mongodb.repository.config.EnableMongoRepositorie
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 @SpringBootApplication
-//@EnableMongoRepositories(basePackages = "com.zam.*")
+//@EnableMongoRepositories
 public class UanetApplication {
 
 	public static void main(String[] args) {

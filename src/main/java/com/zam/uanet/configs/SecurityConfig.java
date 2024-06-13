@@ -54,9 +54,15 @@ public class SecurityConfig {
                         (authz) -> {
                             authz.requestMatchers("/api/users/login").permitAll();
                             authz.requestMatchers("/api/posts").permitAll();
-                            //authz.requestMatchers("/api/users/**").permitAll();
+                            authz.requestMatchers("/api/posts/{id}").permitAll();
                             authz.requestMatchers("/api/students/{id}").permitAll();
                             authz.requestMatchers("/api/students").permitAll();
+                            authz.requestMatchers("/api/users/{id}").permitAll();
+                            authz.requestMatchers("/api/users").permitAll();
+                            authz.requestMatchers("/api/posts/student/{id}").permitAll();
+                            authz.requestMatchers("/api/comments").permitAll();
+                            authz.requestMatchers("/api/comments/{id}").permitAll();
+                            authz.requestMatchers("/api/comments/post/{id}").permitAll();
                             //authz.requestMatchers("/api/clientes/registrarse").permitAll();
                             //authz.requestMatchers(HttpMethod.GET,"/api/productos").permitAll();
                             //authz.requestMatchers("/api/**").hasRole("ADMIN");

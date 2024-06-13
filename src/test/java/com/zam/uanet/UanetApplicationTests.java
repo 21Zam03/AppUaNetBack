@@ -18,9 +18,9 @@ class UanetApplicationTests {
 
 	@Test
 	void contextLoads() {
-		UserEntity user = userService.getUser(new ObjectId("662ecc338217ba847346b799"));
-		user.setPassword(passwordEncoder.encode(user.getPassword()));
-		userService.updateUser(user);
+		//UserEntity user = userService.getUser(new ObjectId("662ecc338217ba847346b799"));
+		//user.setPassword(passwordEncoder.encode(user.getPassword()));
+		//userService.updateUser(user);
 	}
 
 }

@@ -15,7 +15,8 @@ public class StudentDTO {
     private String idUser;
     private String fullname;
     private Date fecha_nacimiento;
-    private String direccion;
+    private String genre;
+    private String distrito;
     private String carreraProfesional;
     private byte[] photo;
 

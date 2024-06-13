@@ -1,7 +1,9 @@
 package com.zam.uanet.services.imp;
 
 import com.zam.uanet.dtos.PostDTO;
+import com.zam.uanet.entities.CommentEntity;
 import com.zam.uanet.entities.PostEntity;
+import com.zam.uanet.repositories.CommentRepository;
 import com.zam.uanet.repositories.PostRepository;
 import com.zam.uanet.services.PostService;
 import org.bson.types.ObjectId;
@@ -19,6 +21,9 @@ public class PostServiceImpl implements PostService {
 
     @Autowired
     private PostRepository postRepository;
+
+    @Autowired
+    private CommentRepository commentRepository;
 
     public Date obtenerFecha() {
         LocalDateTime fechaActual = LocalDateTime.now();
@@ -43,15 +48,15 @@ public class PostServiceImpl implements PostService {
     public List<PostDTO> listPost() {
         List<PostEntity> postEntityList1 = postRepository.findAll();
         List<PostDTO> postEntityList2 = new ArrayList<>();
-
         for (int i = 0; i<postEntityList1.size(); i++) {
             PostDTO postDTO = new PostDTO();
             postDTO.setIdPost(postEntityList1.get(i).getIdPost().toHexString());
             postDTO.setIdStudent(postEntityList1.get(i).getIdStudent().toHexString());
-            postDTO.setIdComments(postEntityList1.get(i).getIdComments());
             postDTO.setMessage(postEntityList1.get(i).getMessage());
             postDTO.setDatePublished(postEntityList1.get(i).getDatePublished());
             postDTO.setPhoto(postEntityList1.get(i).getPhoto());
+            postDTO.setLikes(postEntityList1.get(i).getLikes());
+            postDTO.setTipo(postEntityList1.get(i).getTipo());
             postEntityList2.add(postDTO);
         }
         return postEntityList2;
@@ -66,7 +71,29 @@ public class PostServiceImpl implements PostService {
 
     @Override
     public String deletePost(ObjectId idPost) {
-        return "";
+        List<CommentEntity> comment = commentRepository.findByPostQuery(idPost);
+        postRepository.deleteById(idPost);
+        for (int i=0; i<comment.size(); i++) {
+            commentRepository.deleteById(comment.get(i).getIdComment());
+        }
+        return "Publicacion eliminada";
+    }
+
+    @Override
+    public List<PostDTO> findByStudentQuery(ObjectId idStudent) {
+        List<PostEntity> listPost = postRepository.findByStudentQuery(idStudent);
+        List<PostDTO> listPostDto = new ArrayList<>();
+        for (int i=0; i<listPost.size(); i++) {
+            PostDTO postDTO = new PostDTO();
+            postDTO.setIdStudent(listPost.get(i).getIdPost().toHexString());
+            postDTO.setIdStudent(listPost.get(i).getIdStudent().toHexString());
+            postDTO.setMessage(listPost.get(i).getMessage());
+            postDTO.setDatePublished(listPost.get(i).getDatePublished());
+            postDTO.setPhoto(listPost.get(i).getPhoto());
+            postDTO.setTipo(listPost.get(i).getTipo());
+            listPostDto.add(postDTO);
+        }
+        return listPostDto;
     }
 
 }

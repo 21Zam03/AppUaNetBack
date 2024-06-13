@@ -13,5 +13,6 @@ public interface PostService {
     public List<PostDTO> listPost();
     public PostEntity updatePost(PostEntity postEntity);
     public String deletePost(ObjectId idPost);
+    public List<PostDTO> findByStudentQuery(ObjectId idStudent);
 
 }
