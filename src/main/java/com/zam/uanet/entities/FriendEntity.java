@@ -10,8 +10,9 @@ import org.springframework.data.mongodb.core.mapping.Document;
 public class FriendEntity {
 
     @Id
-    private ObjectId userId;
+    private ObjectId idFriend;
+    private ObjectId userId1;
+    private ObjectId userId2;
     private String status;
-    private String requestBy;
 
 }

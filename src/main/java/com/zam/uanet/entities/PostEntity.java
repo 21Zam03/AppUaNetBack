@@ -6,6 +6,7 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.util.Date;
+import java.util.List;
 
 @Document(collection = "posts")
 @Data
@@ -17,6 +18,7 @@ public class PostEntity {
     private String message;
     private Date datePublished;
     private byte[] photo;
-    private Integer likes;
+    private List<ObjectId> likes;
     private String tipo;
+
 }

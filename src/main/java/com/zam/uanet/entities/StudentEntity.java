@@ -22,5 +22,9 @@ public class StudentEntity {
     private String carreraProfesional;
     private byte[] photo;
     private List<ObjectId> friends;
+    private String biografia;
+    private List<String> intereses;
+    private List<String> hobbies;
+    private String nickname;
 
 }

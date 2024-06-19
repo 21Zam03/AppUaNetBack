@@ -3,14 +3,14 @@ package com.zam.uanet.dtos;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.bson.types.ObjectId;
 
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class LoginResponse {
+public class IdUsers {
 
-    private boolean success;
-    private String message;
-    private StudentDTO studentDTO;
+    private ObjectId userId1;
+    private ObjectId userId2;
 
 }

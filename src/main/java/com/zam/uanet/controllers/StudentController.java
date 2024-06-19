@@ -1,8 +1,10 @@
 package com.zam.uanet.controllers;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.zam.uanet.dtos.StudentDTO;
+import com.zam.uanet.dtos.StudentFull;
 import com.zam.uanet.entities.StudentEntity;
-import com.zam.uanet.entities.UserEntity;
 import com.zam.uanet.services.StudentService;
 import lombok.extern.slf4j.Slf4j;
 import org.bson.types.ObjectId;
@@ -35,51 +37,50 @@ public class StudentController {
             @RequestPart("genero") String genero,
             @RequestPart("distrito") String distrito,
             @RequestPart("carreraProfesional") String carreraProfesional,
-            @RequestPart("email") String email,
-            @RequestPart("password") String password,
-            @RequestPart("rol") String rol
+            @RequestPart("idUser") String idUser
     ) throws IOException, ParseException {
         SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
         Date fecha = dateFormat.parse(fecha_nacimiento);
-
         StudentEntity student = new StudentEntity();
+        student.setIdUser(new ObjectId(idUser));
         student.setFullname(fullname);
         student.setFecha_nacimiento(fecha);
         student.setGenre(genero);
         student.setDistrito(distrito);
         student.setCarreraProfesional(carreraProfesional);
         student.setFriends(new ArrayList<>());
-
-        UserEntity user = new UserEntity();
-        user.setEmail(email);
-        user.setPassword(password);
-        user.setRol(rol);
-        return studentService.loginAction(user, student);
+        return studentService.createStudent(student);
     }
 
     @GetMapping("/{id}")
     @ResponseStatus(HttpStatus.OK)
-    public StudentDTO getStudent(@PathVariable(value = "id") ObjectId idStudent) {
+    public StudentFull getStudent(@PathVariable(value = "id") ObjectId idStudent) {
         return studentService.getStudent(idStudent);
     }
 
     @GetMapping
     @ResponseStatus(HttpStatus.OK)
-    public List<StudentEntity> listStudents() {
+    public List<StudentDTO> listStudents() {
         return studentService.listStudent();
     }
 
     @PutMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @ResponseStatus(HttpStatus.OK)
-    public StudentDTO updateStudent(
+    public StudentFull updateStudent(
             @RequestPart("idStudent") String idStudent,
             @RequestPart("idUser") String idUser,
             @RequestPart("fullname") String fullname,
             @RequestPart("fecha_nacimiento") String fecha_nacimiento,
+            @RequestPart("genero") String genero,
             @RequestPart("distrito") String distrito,
             @RequestPart("carreraProfesional") String carreraProfesional,
-            @RequestPart("photo") MultipartFile photo
+            @RequestPart("photo") MultipartFile photo,
+            @RequestPart("biografia") String bio,
+            @RequestPart("intereses") String listTags,
+            @RequestPart("hobbies") String hobbies,
+            @RequestPart("nickname") String nickname
     ) throws IOException, ParseException {
+        System.out.println(photo);
         SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
         Date fecha = dateFormat.parse(fecha_nacimiento);
         StudentEntity student = new StudentEntity();
@@ -87,12 +88,19 @@ public class StudentController {
         student.setIdUser(new ObjectId(idUser));
         student.setFullname(fullname);
         student.setFecha_nacimiento(fecha);
+        student.setGenre(genero);
         student.setDistrito(distrito);
         student.setCarreraProfesional(carreraProfesional);
         student.setPhoto(photo.getBytes());
+        student.setBiografia(bio);
+        ObjectMapper objectMapper = new ObjectMapper();
+        List<String> lista = objectMapper.readValue(listTags, new TypeReference<List<String>>() {});
+        student.setIntereses(lista);
+        List<String> lista2 = objectMapper.readValue(hobbies, new TypeReference<List<String>>() {});
+        student.setHobbies(lista2);
+        student.setNickname(nickname);
         return studentService.updateStudent(student);
     }
-
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.OK)
     public String deleteStudent(@PathVariable(value = "id") ObjectId idStudent) {

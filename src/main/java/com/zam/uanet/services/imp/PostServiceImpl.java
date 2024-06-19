@@ -10,10 +10,7 @@ import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.sql.Date;
-import java.sql.Timestamp;
-import java.time.LocalDateTime;
-import java.util.ArrayList;
+import java.util.ArrayList;;
 import java.util.List;
 
 @Service
@@ -25,17 +22,8 @@ public class PostServiceImpl implements PostService {
     @Autowired
     private CommentRepository commentRepository;
 
-    public Date obtenerFecha() {
-        LocalDateTime fechaActual = LocalDateTime.now();
-        Timestamp timestamp = Timestamp.valueOf(fechaActual);
-        Date fechaSQL = new Date(timestamp.getTime());
-        return fechaSQL;
-    }
-
     @Override
     public PostEntity createPost(PostEntity postEntity) {
-        Date fecha = this.obtenerFecha();
-        postEntity.setDatePublished(fecha);
         return postRepository.save(postEntity);
     }
 
@@ -55,7 +43,11 @@ public class PostServiceImpl implements PostService {
             postDTO.setMessage(postEntityList1.get(i).getMessage());
             postDTO.setDatePublished(postEntityList1.get(i).getDatePublished());
             postDTO.setPhoto(postEntityList1.get(i).getPhoto());
-            postDTO.setLikes(postEntityList1.get(i).getLikes());
+            List<String> lista = new ArrayList<>();
+            for (int j = 0; j<postEntityList1.get(i).getLikes().size(); j++) {
+                lista.add(postEntityList1.get(i).getLikes().get(j).toHexString());
+            }
+            postDTO.setLikes(lista);
             postDTO.setTipo(postEntityList1.get(i).getTipo());
             postEntityList2.add(postDTO);
         }
@@ -91,6 +83,11 @@ public class PostServiceImpl implements PostService {
             postDTO.setDatePublished(listPost.get(i).getDatePublished());
             postDTO.setPhoto(listPost.get(i).getPhoto());
             postDTO.setTipo(listPost.get(i).getTipo());
+            List<String> lista = new ArrayList<>();
+            for (int j = 0; j<listPost.get(i).getLikes().size(); j++) {
+                lista.add(listPost.get(i).getLikes().get(j).toHexString());
+            }
+            postDTO.setLikes(lista);
             listPostDto.add(postDTO);
         }
         return listPostDto;

@@ -9,12 +9,12 @@ import java.util.Date;
 import java.util.List;
 
 @Data
-@AllArgsConstructor
 @NoArgsConstructor
-public class StudentDTO {
+@AllArgsConstructor
+public class StudentFull {
 
     private String idStudent;
-    private String idUser;
+    private UserDto userDto;
     private String fullname;
     private Date fecha_nacimiento;
     private String genre;
@@ -26,4 +26,5 @@ public class StudentDTO {
     private List<String> intereses;
     private List<String> hobbies;
     private String nickname;
+
 }

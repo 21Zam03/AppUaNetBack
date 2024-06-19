@@ -26,13 +26,20 @@ public class CommentServiceImpl implements CommentService {
     private PostRepository postRepository;
 
     @Override
-    public CommentEntity createComment(CommentEntity comment) {
+    public CommentDTO createComment(CommentEntity comment) {
         if(comment == null) {
             log.warn("El comentario es nulo");
             throw new BadRequestException("El el comentario es nulo");
         }
+        CommentEntity commentEntity = commentRepository.save(comment);
+        CommentDTO commentDTO = new CommentDTO();
+        commentDTO.setIdComment(commentEntity.getIdComment().toHexString());
+        commentDTO.setIdStudent(commentEntity.getIdStudent().toHexString());
+        commentDTO.setIdPost(commentEntity.getIdPost().toHexString());
+        commentDTO.setComment(commentEntity.getComment());
+        commentDTO.setLike(commentEntity.isLike());
         log.info("Se creo el comentario con exito");
-        return commentRepository.save(comment);
+        return commentDTO;
     }
 
     @Override

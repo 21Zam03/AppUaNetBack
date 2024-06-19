@@ -1,9 +1,9 @@
 package com.zam.uanet.controllers;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.zam.uanet.dtos.PostDTO;
-import com.zam.uanet.dtos.StudentDTO;
 import com.zam.uanet.entities.PostEntity;
-import com.zam.uanet.entities.StudentEntity;
 import com.zam.uanet.services.PostService;
 import lombok.extern.slf4j.Slf4j;
 import org.bson.types.ObjectId;
@@ -14,7 +14,10 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 @RestController
@@ -30,21 +33,27 @@ public class PostController {
     public PostEntity createPost(
             @RequestPart("idStudent") String idStudent,
             @RequestPart("message") String message,
-            @RequestPart("datePublished") String datePublished,
             @RequestPart("likes") String likes,
             @RequestPart("type") String tipo,
+            @RequestPart("datePublished") String datePublished,
             @RequestPart(value = "photo", required = false) MultipartFile photo
-    ) throws IOException {
+    ) throws IOException, ParseException {
         PostEntity postEntity = new PostEntity();
         postEntity.setIdStudent(new ObjectId(idStudent));
         postEntity.setMessage(message);
-        postEntity.setLikes(Integer.valueOf(likes));
+        postEntity.setLikes(new ArrayList<>());
         postEntity.setTipo(tipo);
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        Date fecha = dateFormat.parse(datePublished);
+        postEntity.setDatePublished(fecha);
         if (photo != null) {
             postEntity.setPhoto(photo.getBytes());
         } else {
             postEntity.setPhoto(null); // O manejar la ausencia de foto según tu lógica de negocio
         }
+        ObjectMapper objectMapper = new ObjectMapper();
+        List<ObjectId> lista = objectMapper.readValue(likes, new TypeReference<List<ObjectId>>() {});
+        postEntity.setLikes(lista);
         return postService.createPost(postEntity);
     }
 
@@ -64,7 +73,7 @@ public class PostController {
             @RequestPart(value = "photo", required = false) MultipartFile photo,
             @RequestPart("likes") String likes,
             @RequestPart("type") String tipo
-    ) throws IOException {
+    ) throws IOException, ParseException {
         PostEntity postEntity = new PostEntity();
         postEntity.setIdPost(new ObjectId(idPost));
         postEntity.setIdStudent(new ObjectId(idStudent));
@@ -75,7 +84,12 @@ public class PostController {
         } else {
             postEntity.setPhoto(null); // O manejar la ausencia de foto según tu lógica de negocio
         }
-        postEntity.setLikes(Integer.valueOf(likes));
+        ObjectMapper objectMapper = new ObjectMapper();
+        List<ObjectId> lista = objectMapper.readValue(likes, new TypeReference<List<ObjectId>>() {});
+        postEntity.setLikes(lista);
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        Date fecha = dateFormat.parse(datePublished);
+        postEntity.setDatePublished(fecha);
         return postService.updatePost(postEntity);
     }
 
@@ -90,7 +104,5 @@ public class PostController {
     public List<PostDTO> findByStudent(@PathVariable(value = "id") ObjectId idStudent) {
         return postService.findByStudentQuery(idStudent);
     }
-
-
 
 }

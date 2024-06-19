@@ -8,7 +8,7 @@ import java.util.List;
 
 public interface CommentService {
 
-    public CommentEntity createComment(CommentEntity comment);
+    public CommentDTO createComment(CommentEntity comment);
     public CommentDTO getComment(ObjectId idComment);
     public List<CommentEntity> listComment();
     public CommentDTO updateComment(CommentEntity comment);

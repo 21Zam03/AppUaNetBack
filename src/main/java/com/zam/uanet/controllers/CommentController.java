@@ -1,8 +1,6 @@
 package com.zam.uanet.controllers;
 
 import com.zam.uanet.dtos.CommentDTO;
-import com.zam.uanet.dtos.CommentRequest;
-import com.zam.uanet.dtos.PostDTO;
 import com.zam.uanet.entities.CommentEntity;
 import com.zam.uanet.services.CommentService;
 import lombok.extern.slf4j.Slf4j;
@@ -23,7 +21,7 @@ public class CommentController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.OK)
-    public CommentEntity createComment(@RequestBody CommentEntity comment) {
+    public CommentDTO createComment(@RequestBody CommentEntity comment) {
         return commentService.createComment(comment);
     }
 
