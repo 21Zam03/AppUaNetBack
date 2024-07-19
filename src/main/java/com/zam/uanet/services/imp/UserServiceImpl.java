@@ -41,7 +41,6 @@ public class UserServiceImpl implements UserService {
         userDto.setEmail(userEntity.getEmail());
         userDto.setPassword(userEntity.getPassword());
         userDto.setRol(userEntity.getRol());
-
         log.info("Se creo el usuario con exito");
         return userDto;
     }

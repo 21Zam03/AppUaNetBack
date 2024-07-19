@@ -33,6 +33,17 @@ public class FriendServiceImpl implements FriendService {
     }
 
     @Override
+    public FriendDTO updateFriend(FriendEntity friendEntity) {
+        FriendEntity friend = friendRepository.save(friendEntity);
+        FriendDTO friendDTO = new FriendDTO();
+        friendDTO.setIdFriend(friend.getIdFriend().toHexString());
+        friendDTO.setUserId1(friend.getUserId1().toHexString());
+        friendDTO.setUserId2(friend.getUserId2().toHexString());
+        friendDTO.setStatus(friend.getStatus());
+        return friendDTO;
+    }
+
+    @Override
     public FriendDTO findFriendsByUserId1AndUserId2(ObjectId userId1, ObjectId userId2) {
         System.out.println("LLegada");
         FriendEntity friendEntity = friendRepository.findFriendsByUserId1AndUserId2(userId1, userId2);
@@ -46,5 +57,10 @@ public class FriendServiceImpl implements FriendService {
         } else {
             return new FriendDTO();
         }
+    }
+
+    @Override
+    public long countFriends(ObjectId userId) {
+        return friendRepository.countFriends(userId);
     }
 }

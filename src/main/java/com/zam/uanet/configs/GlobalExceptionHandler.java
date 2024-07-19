@@ -26,5 +26,4 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NO_CONTENT).body(ex.getMessage());
     }
 
-
 }

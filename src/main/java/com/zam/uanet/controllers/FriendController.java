@@ -37,4 +37,16 @@ public class FriendController {
         return friendService.findFriendsByUserId1AndUserId2(idUser1, idUser2);
     }
 
+    @GetMapping("/countFriends/{id}")
+    @ResponseStatus(HttpStatus.OK)
+    public long getCountFriends(@PathVariable(value = "id") ObjectId userId) {
+        return friendService.countFriends(userId);
+    }
+
+    @PutMapping
+    @ResponseStatus(HttpStatus.OK)
+    public FriendDTO updateFriend(@RequestBody FriendEntity friend) {
+        return friendService.updateFriend(friend);
+    }
+
 }

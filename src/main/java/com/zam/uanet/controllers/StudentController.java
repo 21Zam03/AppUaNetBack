@@ -4,22 +4,24 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.zam.uanet.dtos.StudentDTO;
 import com.zam.uanet.dtos.StudentFull;
+import com.zam.uanet.dtos.StudentNickBio;
 import com.zam.uanet.entities.StudentEntity;
 import com.zam.uanet.services.StudentService;
 import lombok.extern.slf4j.Slf4j;
 import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
 
 @RestController
 @RequestMapping("/api/students")
@@ -105,6 +107,34 @@ public class StudentController {
     @ResponseStatus(HttpStatus.OK)
     public String deleteStudent(@PathVariable(value = "id") ObjectId idStudent) {
         return studentService.deleteStudent(idStudent);
+    }
+
+    @GetMapping("/photo/{id}")
+    @ResponseStatus(HttpStatus.OK)
+    public ResponseEntity<Object> findPhoto(@PathVariable(value = "id") ObjectId idStudent) {
+        byte[] photo = studentService.findPhotoById(idStudent);
+        if (photo != null) {
+            // Configura los encabezados HTTP para el contenido binario
+            HttpHeaders headers = new HttpHeaders();
+            headers.add(HttpHeaders.CONTENT_TYPE, MediaType.IMAGE_JPEG_VALUE); // Cambia el tipo MIME según la imagen (JPEG, PNG, etc.)
+
+            headers.add(HttpHeaders.CONTENT_LENGTH, String.valueOf(photo.length));
+
+            ByteArrayResource resource = new ByteArrayResource(photo);
+
+            return new ResponseEntity<>(resource, headers, HttpStatus.OK);
+        } else {
+            Map<String, String> response = new HashMap<>();
+            response.put("message", "Photo not found");
+            return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
+        }
+
+    }
+
+    @GetMapping("/nickAndBio/{id}")
+    @ResponseStatus(HttpStatus.OK)
+    public ResponseEntity<StudentNickBio> getByNicknameAndBio(@PathVariable(value = "id") ObjectId idStudent) {
+        return new ResponseEntity<>(studentService.getStudentBioAndNickname(idStudent), HttpStatus.OK);
     }
 
 }

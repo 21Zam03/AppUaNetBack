@@ -105,6 +105,7 @@ public class CommentServiceImpl implements CommentService {
     @Override
     public List<CommentDTO> findByPostQuery(ObjectId idPost) {
         List<CommentEntity> listaComment = commentRepository.findByPostQuery(idPost);
+        System.out.println(listaComment);
         List<CommentDTO> listaCommentDTO = new ArrayList<>();
         for (int i=0; i<listaComment.size(); i++) {
             CommentDTO commentDTO = new CommentDTO();

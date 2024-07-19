@@ -1,7 +1,12 @@
 package com.zam.uanet.services.imp;
 
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.model.Filters;
+import com.mongodb.client.model.Projections;
 import com.zam.uanet.dtos.StudentDTO;
 import com.zam.uanet.dtos.StudentFull;
+import com.zam.uanet.dtos.StudentNickBio;
 import com.zam.uanet.dtos.UserDto;
 import com.zam.uanet.entities.StudentEntity;
 import com.zam.uanet.entities.UserEntity;
@@ -10,9 +15,9 @@ import com.zam.uanet.exceptions.NotFoundException;
 import com.zam.uanet.repositories.StudentRepository;
 import com.zam.uanet.repositories.UserRepository;
 import com.zam.uanet.services.StudentService;
-import com.zam.uanet.services.UserService;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.catalina.User;
+import org.bson.Document;
+import org.bson.types.Binary;
 import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -30,6 +35,8 @@ public class StudentServiceImpl implements StudentService {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private MongoClient mongoClient;
 
     @Override
     public StudentDTO createStudent(StudentEntity student) {
@@ -109,7 +116,8 @@ public class StudentServiceImpl implements StudentService {
             studentDTO.setGenre(listaEstudiantes.get(i).getGenre());
             studentDTO.setDistrito(listaEstudiantes.get(i).getDistrito());
             studentDTO.setCarreraProfesional(listaEstudiantes.get(i).getCarreraProfesional());
-            //studentDTO.setPhoto(listaEstudiantes.get(i).getPhoto());
+            studentDTO.setPhoto(listaEstudiantes.get(i).getPhoto());
+            studentDTO.setNickname(listaEstudiantes.get(i).getNickname());
             listaClientesDto.add(studentDTO);
         }
         return listaClientesDto;
@@ -171,4 +179,51 @@ public class StudentServiceImpl implements StudentService {
         return studentRepository.findByUserQuery(idUser);
     }
 
+    @Override
+    public byte[] findPhotoById(ObjectId idStudent) {
+        MongoCollection<Document> collection = mongoClient.getDatabase("uanetbd").getCollection("students");
+        // Consulta para filtrar por idStudent y proyectar solo el campo 'photo'
+        Document result = collection.find(Filters.eq("_id", idStudent))
+                .projection(Projections.fields(Projections.include("photo")))
+                .first();
+        // Verifica si se encontró un documento y retorna el campo 'photo'
+
+        if (result != null) {
+            Binary photoBinary = result.get("photo", Binary.class);
+            if (photoBinary != null) {
+                return photoBinary.getData();
+                // Obtiene el array de bytes de los datos binarios
+            } else {
+                // Manejo si el campo 'photo' es null
+                return null;
+            }
+        } else {
+            // Manejo si no se encontró el documento
+            return null;
+        }
+    }
+
+    @Override
+    public StudentNickBio getStudentBioAndNickname(ObjectId idStudent) {
+        MongoCollection<Document> collection = mongoClient.getDatabase("uanetbd").getCollection("students");
+        Document query = new Document("_id", idStudent);
+        Document projection = new Document("biografia", 1)
+                .append("nickname", 1);
+
+        Document result = collection.find(query)
+                .projection(projection)
+                .first();
+
+        if (result != null) {
+            String biografia = result.getString("biografia");
+            String nickname = result.getString("nickname");
+            return new StudentNickBio(biografia, nickname);
+        }
+        return null;
+    }
+
+    @Override
+    public StudentEntity getStudentSearch(int page, int size, String Search) {
+        return null;
+    }
 }

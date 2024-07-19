@@ -2,12 +2,14 @@ package com.zam.uanet.controllers;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.zam.uanet.dtos.LikesDto;
 import com.zam.uanet.dtos.PostDTO;
 import com.zam.uanet.entities.PostEntity;
 import com.zam.uanet.services.PostService;
 import lombok.extern.slf4j.Slf4j;
 import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
@@ -103,6 +105,41 @@ public class PostController {
     @ResponseStatus(HttpStatus.OK)
     public List<PostDTO> findByStudent(@PathVariable(value = "id") ObjectId idStudent) {
         return postService.findByStudentQuery(idStudent);
+    }
+
+    @GetMapping("/likes/{id}")
+    @ResponseStatus(HttpStatus.OK)
+    public Integer findLikesByStudent(@PathVariable(value = "id") ObjectId idStudent) {
+        return postService.getTotalLikesByStudent(idStudent);
+    }
+
+    @GetMapping("/countPosts/{id}")
+    @ResponseStatus(HttpStatus.OK)
+    public Integer getcountPostsByStudentId(@PathVariable(value = "id") ObjectId idStudent) {
+        return postService.countPostsByStudentId(idStudent);
+    }
+
+    @GetMapping("/studentPageable/{id}")
+    @ResponseStatus(HttpStatus.OK)
+    public Page<PostDTO> findByStudentIdPageable(
+            @PathVariable(value = "id") ObjectId idStudent,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "5") int size) {
+        return postService.findByIdStudent(idStudent, page, size);
+    }
+
+    @GetMapping("/allPageable")
+    @ResponseStatus(HttpStatus.OK)
+    public Page<PostDTO> findAllPosts(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "5") int size) {
+        return postService.getAllPosts(page, size);
+    }
+
+    @PutMapping("/likes")
+    @ResponseStatus(HttpStatus.OK)
+    public void updatePostsLikes(@RequestBody LikesDto likesDto) {
+        postService.updatePostsLikes(likesDto.getIdPost(), likesDto.getLikes());
     }
 
 }

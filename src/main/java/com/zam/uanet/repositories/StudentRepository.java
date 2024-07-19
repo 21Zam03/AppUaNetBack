@@ -12,4 +12,5 @@ public interface StudentRepository extends MongoRepository<StudentEntity, Object
     @Query("{'idUser' : ?0}")
     public StudentEntity findByUserQuery(ObjectId idUser);
 
+    //public StudentEntity getStudentSearch(int page, int size, String Search);
 }

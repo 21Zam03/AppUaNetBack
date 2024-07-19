@@ -14,4 +14,7 @@ public interface FriendRepository extends MongoRepository<FriendEntity, ObjectId
     @Query("{ 'userId1': ?0, 'userId2': ?1 }")
     FriendEntity findFriendsByUserId1AndUserId2(ObjectId userId1, ObjectId userId2);
 
+    @Query(value = "{ $or: [ { 'userId1': ?0, status: 'Aceptado' }, { 'userId2': ?0, status: 'Aceptado' } ] }", count = true)
+    long countFriends(ObjectId userId);
+
 }

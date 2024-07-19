@@ -22,6 +22,7 @@ public class CommentController {
     @PostMapping
     @ResponseStatus(HttpStatus.OK)
     public CommentDTO createComment(@RequestBody CommentEntity comment) {
+        System.out.println(comment);
         return commentService.createComment(comment);
     }
 
@@ -34,6 +35,7 @@ public class CommentController {
     @GetMapping("/post/{id}")
     @ResponseStatus(HttpStatus.OK)
     public List<CommentDTO> findByPost(@PathVariable(value = "id") ObjectId idPost) {
+        System.out.println(idPost);
         return commentService.findByPostQuery(idPost);
     }
 

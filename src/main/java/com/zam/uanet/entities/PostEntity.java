@@ -19,6 +19,7 @@ public class PostEntity {
     private Date datePublished;
     private byte[] photo;
     private List<ObjectId> likes;
+    private List<ObjectId> saves;
     private String tipo;
 
 }
