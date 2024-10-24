@@ -1,196 +1,286 @@
 package com.zam.uanet.services.imp;
 
-import com.mongodb.client.AggregateIterable;
 import com.mongodb.client.MongoClient;
-import com.mongodb.client.MongoCollection;
-import com.mongodb.client.model.Aggregates;
-import com.mongodb.client.model.Filters;
-import com.mongodb.client.model.Projections;
-import com.zam.uanet.dtos.PostDTO;
-import com.zam.uanet.entities.CommentEntity;
-import com.zam.uanet.entities.PostEntity;
+import com.zam.uanet.collections.CommentCollection;
+import com.zam.uanet.collections.PostCollection;
+import com.zam.uanet.collections.PersonCollection;
+import com.zam.uanet.collections.UserCollection;
+import com.zam.uanet.exceptions.NotFoundException;
+import com.zam.uanet.payload.dtos.BlobDto;
+import com.zam.uanet.payload.response.CommentsResponse;
+import com.zam.uanet.payload.response.LikesResponse;
+import com.zam.uanet.payload.response.MessageResponse;
+import com.zam.uanet.payload.response.PostResponse;
 import com.zam.uanet.repositories.CommentRepository;
 import com.zam.uanet.repositories.PostRepository;
+import com.zam.uanet.repositories.PersonRepository;
+import com.zam.uanet.repositories.UserRepository;
+import com.zam.uanet.services.FireBaseStorageService;
 import com.zam.uanet.services.PostService;
-import org.bson.Document;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.catalina.User;
 import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;;
-import java.util.Arrays;
+import org.springframework.data.domain.*;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
+
 
 @Service
+@Slf4j
 public class PostServiceImpl implements PostService {
 
-    @Autowired
-    private PostRepository postRepository;
+    private final PostRepository postRepository;
+    private final FireBaseStorageService fireBaseStorageService;
+    private final MongoClient mongoClient;
+    private final PersonRepository personRepository;
+    private final UserRepository userRepository;
+    private final CommentRepository commentRepository;
 
     @Autowired
-    private CommentRepository commentRepository;
-
-    @Autowired
-    private MongoClient mongoClient;
-
-    @Override
-    public PostEntity createPost(PostEntity postEntity) {
-        return postRepository.save(postEntity);
+    public PostServiceImpl (PostRepository postRepository, MongoClient mongoClient,
+                            FireBaseStorageService fireBaseStorageService, PersonRepository personRepository,
+                            UserRepository userRepository, CommentRepository commentRepository) {
+        this.postRepository = postRepository;
+        this.mongoClient = mongoClient;
+        this.fireBaseStorageService = fireBaseStorageService;
+        this.personRepository = personRepository;
+        this.userRepository = userRepository;
+        this.commentRepository = commentRepository;
     }
 
     @Override
-    public PostEntity getPost(ObjectId idPost) {
-        return null;
-    }
+    public PostResponse createPost(String email, String message, MultipartFile file) throws Exception {
 
-    @Override
-    public List<PostDTO> listPost() {
-        List<PostEntity> postEntityList1 = postRepository.findAll();
-        List<PostDTO> postEntityList2 = new ArrayList<>();
-        for (int i = 0; i<postEntityList1.size(); i++) {
-            PostDTO postDTO = new PostDTO();
-            postDTO.setIdPost(postEntityList1.get(i).getIdPost().toHexString());
-            postDTO.setIdStudent(postEntityList1.get(i).getIdStudent().toHexString());
-            postDTO.setMessage(postEntityList1.get(i).getMessage());
-            postDTO.setDatePublished(postEntityList1.get(i).getDatePublished());
-            postDTO.setPhoto(postEntityList1.get(i).getPhoto());
-            List<String> lista = new ArrayList<>();
-            for (int j = 0; j<postEntityList1.get(i).getLikes().size(); j++) {
-                lista.add(postEntityList1.get(i).getLikes().get(j).toHexString());
-            }
-            postDTO.setLikes(lista);
-            postDTO.setTipo(postEntityList1.get(i).getTipo());
-            postEntityList2.add(postDTO);
+        UserCollection loggedUser = userRepository.findByEmail(email).orElseThrow(() -> {
+            log.error("User not found");
+            return new NotFoundException("User doest not exist");
+        });
+
+        PersonCollection personCollection = personRepository.findByUserId(loggedUser.getIdUser()).orElseThrow(() -> {
+            return new NotFoundException("Person not found");
+        });
+
+        PostCollection postCollection = PostCollection.builder()
+                .personId(personCollection.getPersonId())
+                .message(message)
+                .datePublished(LocalDateTime.now())
+                .image(null)
+                .likes(new ArrayList<>())
+                .comments(new ArrayList<>())
+                .build();
+        PostCollection postCreated = postRepository.save(postCollection);
+
+        if (file != null) {
+            BlobDto blobDto = fireBaseStorageService.uploadFile(file, "posts/", postCollection.getPostId().toHexString());
+            postCollection.setImage(blobDto.getUrl());
+            postCreated = postRepository.save(postCollection);
         }
-        return postEntityList2;
+        log.info("Post was created successfully by {}", personCollection.getFullName());
+        return PostResponse.builder()
+                .postId(postCreated.getPostId().toHexString())
+                .personId(postCreated.getPersonId().toHexString())
+                .personName(personCollection.getFullName())
+                .nickName(personCollection.getNickname())
+                .message(postCreated.getMessage())
+                .datePublished(postCreated.getDatePublished())
+                .image(postCreated.getImage())
+                .likes(postCreated.getLikes().stream().map(ObjectId::toString).collect(Collectors.toList()))
+                .comments(postCreated.getComments().stream().map(ObjectId::toString).collect(Collectors.toList()))
+                .build();
     }
 
     @Override
-    public PostEntity updatePost(PostEntity postEntity) {
-        PostEntity post = postRepository.findById(postEntity.getIdPost()).get();
-        post = postEntity;
-        return postRepository.save(post);
-    }
+    public Page<PostResponse> getPosts(int page, int size) {
+        Sort.Direction direction = Sort.Direction.DESC;
+        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, "datePublished"));
+        Page<PostCollection> posts = postRepository.findAll(pageable);
+        List<PostResponse> listPosts = new ArrayList<>();
+        for (int i = 0; i < posts.getContent().size(); i++) {
+            PersonCollection personCollection = personRepository.findById(posts.getContent().get(i).getPersonId()).orElseThrow(() -> {
+                return new NotFoundException("Person doest not exist");
+            });
 
-    @Override
-    public String deletePost(ObjectId idPost) {
-        List<CommentEntity> comment = commentRepository.findByPostQuery(idPost);
-        postRepository.deleteById(idPost);
-        for (int i=0; i<comment.size(); i++) {
-            commentRepository.deleteById(comment.get(i).getIdComment());
+            PostResponse postResponse = PostResponse.builder()
+                    .postId(posts.getContent().get(i).getPostId().toHexString())
+                    .personId(posts.getContent().get(i).getPersonId().toHexString())
+                    .personName(personCollection.getFullName())
+                    .photoProfile(personCollection.getPhotoProfile())
+                    .nickName(personCollection.getNickname())
+                    .message(posts.getContent().get(i).getMessage())
+                    .datePublished(posts.getContent().get(i).getDatePublished())
+                    .image(posts.getContent().get(i).getImage())
+                    .likes(posts.getContent().get(i).getLikes().stream().map(ObjectId::toString).collect(Collectors.toList()))
+                    .comments(posts.getContent().get(i).getComments().stream().map(ObjectId::toString).collect(Collectors.toList()))
+                    .build();
+            listPosts.add(postResponse);
         }
-        return "Publicacion eliminada";
+        return new PageImpl<>(listPosts, pageable, posts.getTotalElements());
     }
 
     @Override
-    public List<PostDTO> findByStudentQuery(ObjectId idStudent) {
-        List<PostEntity> listPost = postRepository.findByStudentQuery(idStudent);
-        List<PostDTO> listPostDto = new ArrayList<>();
-        for (int i=0; i<listPost.size(); i++) {
-            PostDTO postDTO = new PostDTO();
-            postDTO.setIdPost(listPost.get(i).getIdPost().toHexString());
-            postDTO.setIdStudent(listPost.get(i).getIdStudent().toHexString());
-            postDTO.setMessage(listPost.get(i).getMessage());
-            postDTO.setDatePublished(listPost.get(i).getDatePublished());
-            postDTO.setPhoto(listPost.get(i).getPhoto());
-            postDTO.setTipo(listPost.get(i).getTipo());
-            List<String> lista = new ArrayList<>();
-            for (int j = 0; j<listPost.get(i).getLikes().size(); j++) {
-                lista.add(listPost.get(i).getLikes().get(j).toHexString());
-            }
-            postDTO.setLikes(lista);
-            listPostDto.add(postDTO);
+    public MessageResponse deletePost(String email, ObjectId postId) throws IOException {
+        PersonCollection loggedPerson = this.getLoggedPerson(email);
+
+        PostCollection postCollection = postRepository.findById(postId).orElseThrow(() -> {
+            return new NotFoundException("Post not found");
+        });
+
+        if(!postCollection.getPersonId().equals(loggedPerson.getPersonId())) {
+            return new MessageResponse("User don't have permission to delete this post");
         }
-        return listPostDto;
-    }
 
-    @Override
-    public int getTotalLikesByStudent(ObjectId idStudent) {
-        System.out.println("se inicio el metodo");
-        MongoCollection<Document> collection = mongoClient.getDatabase("uanetbd").getCollection("posts");
-        AggregateIterable<Document> result = collection.aggregate(Arrays.asList(
-                Aggregates.match(Filters.eq("idStudent", idStudent)),
-                Aggregates.project(Projections.fields(Projections.computed("likesCount", new Document("$size", "$likes")))),
-                Aggregates.group(new Document("totalLikes", new Document("$sum", "$likesCount")))
-        ));
-        Document doc = result.first();
-        System.out.println(doc);
-        if (doc != null) {
-            Document totalLikesDoc = (Document) doc.get("_id");
-            if (totalLikesDoc != null) {
-                return totalLikesDoc.getInteger("totalLikes", 0);
-            } else {
-                return 0;
-            }
+        List<ObjectId> commentsToDelete = postCollection.getComments();
+        commentsToDelete.forEach(commentRepository::deleteById);
+
+        if(postCollection.getImage() != null) {
+            fireBaseStorageService.deleteFile(postCollection.getPostId().toHexString(), "posts/");
         }
-        return 0;
+
+        postRepository.delete(postCollection);
+        return new MessageResponse("Post was deleted successfully");
     }
 
     @Override
-    public int countPostsByStudentId(ObjectId idStudent) {
-        MongoCollection<Document> collection = mongoClient.getDatabase("uanetbd").getCollection("posts");
-        return (int) collection.countDocuments(Filters.eq("idStudent", idStudent));
+    public MessageResponse giveLike(String email, ObjectId postId) {
+        PersonCollection loggedPerson = this.getLoggedPerson(email);
+
+        PostCollection postCollection = postRepository.findById(postId).orElseThrow(() -> {
+            return new NotFoundException("Post not found");
+        });
+
+        postCollection.getLikes().add(loggedPerson.getPersonId());
+        postRepository.save(postCollection);
+        return new MessageResponse("Post with id "+postId+" was liked by "+loggedPerson.getPersonId());
     }
 
     @Override
-    public Page<PostDTO> findByIdStudent(ObjectId idStudent, int page, int size) {
-        Pageable pageable = PageRequest.of(page, size);
-        Page<PostEntity> pagePost = postRepository.findByIdStudent(idStudent, pageable);
-        List<PostEntity> listPost= pagePost.getContent();
-        List<PostDTO> listPostDto = new ArrayList<>();
-        for (int i=0; i<listPost.size(); i++) {
-            PostDTO postDTO = new PostDTO();
-            postDTO.setIdPost(listPost.get(i).getIdPost().toHexString());
-            postDTO.setIdStudent(listPost.get(i).getIdStudent().toHexString());
-            postDTO.setMessage(listPost.get(i).getMessage());
-            postDTO.setDatePublished(listPost.get(i).getDatePublished());
-            postDTO.setPhoto(listPost.get(i).getPhoto());
-            postDTO.setTipo(listPost.get(i).getTipo());
-            List<String> lista = new ArrayList<>();
-            for (int j = 0; j<listPost.get(i).getLikes().size(); j++) {
-                lista.add(listPost.get(i).getLikes().get(j).toHexString());
-            }
-            postDTO.setLikes(lista);
-            listPostDto.add(postDTO);
+    public MessageResponse removeLike(String email, ObjectId postId) {
+        PostCollection postCollection = postRepository.findById(postId).orElseThrow(() -> {
+            return new NotFoundException("Post not found");
+        });
+
+        PersonCollection loggedPerson = this.getLoggedPerson(email);
+
+        postCollection.getLikes().remove(loggedPerson.getPersonId());
+        postRepository.save(postCollection);
+        return new MessageResponse("Post with id "+postId+" was disliked by "+loggedPerson.getPersonId());
+    }
+
+    @Override
+    public List<LikesResponse> getLikes(ObjectId postId) {
+        PostCollection postCollection = postRepository.findById(postId).orElseThrow(() -> {
+            return new NotFoundException("Post not found");
+        });
+
+        List<String> listLikes = postCollection.getLikes().stream().map(ObjectId::toString).collect(Collectors.toList());
+        List<LikesResponse> listLikesResponses = new ArrayList<>();
+        for (String listLike : listLikes) {
+            PersonCollection personCollection = personRepository.findById(new ObjectId(listLike)).orElseThrow(() -> {
+                return new NotFoundException("Person not found");
+            });
+            LikesResponse likesResponse = LikesResponse.builder()
+                    .personId(personCollection.getPersonId().toHexString())
+                    .fullName(personCollection.getFullName())
+                    .nickName(personCollection.getNickname())
+                    .picturePhoto(personCollection.getPhotoProfile())
+                    .build();
+            listLikesResponses.add(likesResponse);
         }
-        return new PageImpl<>(listPostDto, pageable, listPostDto.size());
+        return listLikesResponses;
     }
 
     @Override
-    public Page<PostDTO> getAllPosts(int page, int size) {
-        Pageable pageable = PageRequest.of(page, size);
-        Page<PostEntity> pagePost = postRepository.findAllByOrderByDatePublishedDesc(pageable);
-        List<PostEntity> listPost= pagePost.getContent();
-        List<PostDTO> listPostDto = new ArrayList<>();
+    public CommentsResponse makeComment(String email, ObjectId postId, String comment) {
+        PersonCollection loggedPerson = this.getLoggedPerson(email);
 
-        for (int i=0; i<listPost.size(); i++) {
-            PostDTO postDTO = new PostDTO();
-            postDTO.setIdPost(listPost.get(i).getIdPost().toHexString());
-            postDTO.setIdStudent(listPost.get(i).getIdStudent().toHexString());
-            postDTO.setMessage(listPost.get(i).getMessage());
-            postDTO.setDatePublished(listPost.get(i).getDatePublished());
-            postDTO.setPhoto(listPost.get(i).getPhoto());
-            postDTO.setTipo(listPost.get(i).getTipo());
-            List<String> lista = new ArrayList<>();
-            for (int j = 0; j<listPost.get(i).getLikes().size(); j++) {
-                lista.add(listPost.get(i).getLikes().get(j).toHexString());
-            }
-            postDTO.setLikes(lista);
-            listPostDto.add(postDTO);
+        PostCollection postCollection = postRepository.findById(postId).orElseThrow(() -> {
+            return new NotFoundException("Post not found");
+        });
+
+        CommentCollection commentCollection = CommentCollection.builder()
+                .personId(loggedPerson.getPersonId())
+                .comment(comment)
+                .build();
+        CommentCollection commentCreated = commentRepository.save(commentCollection);
+        postCollection.getComments().add(commentCreated.getCommentId());
+        postRepository.save(postCollection);
+        return CommentsResponse.builder()
+                .commentId(commentCreated.getCommentId().toHexString())
+                .personId(commentCreated.getPersonId().toHexString())
+                .picturePhoto(loggedPerson.getPhotoProfile())
+                .fullName(loggedPerson.getFullName())
+                .message(commentCreated.getComment())
+                .build();
+    }
+
+    @Override
+    public MessageResponse removeComment(String email, ObjectId commentId, ObjectId postId) {
+        PersonCollection loggedPerson = this.getLoggedPerson(email);
+
+        CommentCollection commentCollection = commentRepository.findById(commentId).orElseThrow(() -> {
+            return new NotFoundException("Comment not found");
+        });
+
+        PostCollection postCollection = postRepository.findById(postId).orElseThrow(() -> {
+            return new NotFoundException("Post not found");
+        });
+
+        if(!loggedPerson.getPersonId().equals(commentCollection.getPersonId())) {
+            return new MessageResponse("User don't have permission to delete this comment");
         }
-        return new PageImpl<>(listPostDto, pageable, pagePost.getTotalElements());
+
+        postCollection.getComments().remove(commentId);
+        postRepository.save(postCollection);
+        commentRepository.deleteById(commentId);
+
+        return new MessageResponse("Comment was deleted by "+loggedPerson.getFullName());
     }
 
     @Override
-    public void updatePostsLikes(ObjectId idPost, List<ObjectId> newLikes) {
-        MongoCollection<Document> collection = mongoClient.getDatabase("uanetbd").getCollection("posts");
-        Document filter = new Document("_id", idPost);
-        Document update = new Document("$set", new Document("likes", newLikes));
-        collection.updateOne(filter, update);
+    public List<CommentsResponse> getComments(ObjectId postId) {
+        PostCollection postCollection = postRepository.findById(postId).orElseThrow(() -> {
+            return new NotFoundException("Post not found");
+        });
+
+        List<String> listComments = postCollection.getComments().stream().map(ObjectId::toString).collect(Collectors.toList());
+        List<CommentsResponse> listCommentsResponses = new ArrayList<>();
+        for (String listComment : listComments) {
+            CommentCollection commentCollection = commentRepository.findById(new ObjectId(listComment)).orElseThrow(() -> {
+                return new NotFoundException("Person not found");
+            });
+
+            PersonCollection personCollection = personRepository.findById(commentCollection.getPersonId()).orElseThrow(() -> {
+                return new NotFoundException("Person not found");
+            });
+
+            CommentsResponse commentsResponse = CommentsResponse.builder()
+                    .commentId(commentCollection.getCommentId().toHexString())
+                    .personId(personCollection.getPersonId().toHexString())
+                    .picturePhoto(personCollection.getPhotoProfile())
+                    .fullName(personCollection.getFullName())
+                    .message(commentCollection.getComment())
+                    .build();
+            listCommentsResponses.add(commentsResponse);
+        }
+        return listCommentsResponses;
+    }
+
+    public PersonCollection getLoggedPerson(String email) {
+        UserCollection loggedUser = userRepository.findByEmail(email).orElseThrow(() -> {
+            return new NotFoundException("User not found");
+        });
+
+        return personRepository.findByUserId(loggedUser.getIdUser()).orElseThrow(() -> {
+            return new NotFoundException("Person not found");
+        });
     }
 
 }

@@ -10,7 +10,8 @@ public class CorsConfig implements WebMvcConfigurer {
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**")
-                .allowedOrigins("http://localhost:8081") // Permitir cualquier origen (¡ajusta según tus necesidades!)
+                    //.allowedOrigins("https://uanet-83750.web.app") // Permitir cualquier origen (¡ajusta según tus necesidades!)
+                .allowedOrigins("http://localhost:3000")
                 .allowedMethods("GET", "POST", "PUT", "DELETE")
                 .allowedHeaders("Authorization", "Content-Type")
                 .exposedHeaders("Authorization")

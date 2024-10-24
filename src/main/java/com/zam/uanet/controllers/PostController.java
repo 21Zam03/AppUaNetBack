@@ -1,145 +1,105 @@
 package com.zam.uanet.controllers;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.zam.uanet.dtos.LikesDto;
-import com.zam.uanet.dtos.PostDTO;
-import com.zam.uanet.entities.PostEntity;
+import com.zam.uanet.payload.response.CommentsResponse;
+import com.zam.uanet.payload.response.LikesResponse;
+import com.zam.uanet.payload.response.MessageResponse;
+import com.zam.uanet.payload.response.PostResponse;
 import com.zam.uanet.services.PostService;
-import lombok.extern.slf4j.Slf4j;
 import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/posts")
-@Slf4j
+@RequestMapping(PostController.API_PATH)
 public class PostController {
 
+    public static final String API_PATH = "/api/posts";
+    public static final String LIKE_PATH = "/like";
+    public static final String COMMENT_PATH = "/comment";
+
+    private final PostService postService;
+
     @Autowired
-    private PostService postService;
+    public PostController(PostService postService) {
+        this.postService = postService;
+    }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @ResponseStatus(HttpStatus.OK)
-    public PostEntity createPost(
-            @RequestPart("idStudent") String idStudent,
+    public ResponseEntity<PostResponse> createPost(
             @RequestPart("message") String message,
-            @RequestPart("likes") String likes,
-            @RequestPart("type") String tipo,
-            @RequestPart("datePublished") String datePublished,
-            @RequestPart(value = "photo", required = false) MultipartFile photo
-    ) throws IOException, ParseException {
-        PostEntity postEntity = new PostEntity();
-        postEntity.setIdStudent(new ObjectId(idStudent));
-        postEntity.setMessage(message);
-        postEntity.setLikes(new ArrayList<>());
-        postEntity.setTipo(tipo);
-        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-        Date fecha = dateFormat.parse(datePublished);
-        postEntity.setDatePublished(fecha);
-        if (photo != null) {
-            postEntity.setPhoto(photo.getBytes());
-        } else {
-            postEntity.setPhoto(null); // O manejar la ausencia de foto según tu lógica de negocio
-        }
-        ObjectMapper objectMapper = new ObjectMapper();
-        List<ObjectId> lista = objectMapper.readValue(likes, new TypeReference<List<ObjectId>>() {});
-        postEntity.setLikes(lista);
-        return postService.createPost(postEntity);
+            @RequestPart(value = "photo", required = false) MultipartFile file
+    ) throws Exception {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String email = authentication.getName();
+        return new ResponseEntity<>(postService.createPost(email, message, file), HttpStatus.CREATED);
+    }
+
+    @DeleteMapping
+    public ResponseEntity<MessageResponse> deletePost(@RequestParam String postId) throws IOException {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String email = authentication.getName();
+        return new ResponseEntity<>(postService.deletePost(email, new ObjectId(postId)), HttpStatus.OK);
     }
 
     @GetMapping
-    @ResponseStatus(HttpStatus.OK)
-    public List<PostDTO> listPost() {
-        return postService.listPost();
+    public Page<PostResponse> getAllPosts(@RequestParam(defaultValue = "0") int page,
+                                          @RequestParam(defaultValue = "5") int size) {
+        return postService.getPosts(page, size);
     }
 
-    @PutMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @ResponseStatus(HttpStatus.OK)
-    public PostEntity updatePost(
-            @RequestPart("idPost") String idPost,
-            @RequestPart("idStudent") String idStudent,
-            @RequestPart("datePublished") String datePublished,
-            @RequestPart("message") String message,
-            @RequestPart(value = "photo", required = false) MultipartFile photo,
-            @RequestPart("likes") String likes,
-            @RequestPart("type") String tipo
-    ) throws IOException, ParseException {
-        PostEntity postEntity = new PostEntity();
-        postEntity.setIdPost(new ObjectId(idPost));
-        postEntity.setIdStudent(new ObjectId(idStudent));
-        postEntity.setMessage(message);
-        postEntity.setTipo(tipo);
-        if (photo != null) {
-            postEntity.setPhoto(photo.getBytes());
-        } else {
-            postEntity.setPhoto(null); // O manejar la ausencia de foto según tu lógica de negocio
-        }
-        ObjectMapper objectMapper = new ObjectMapper();
-        List<ObjectId> lista = objectMapper.readValue(likes, new TypeReference<List<ObjectId>>() {});
-        postEntity.setLikes(lista);
-        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-        Date fecha = dateFormat.parse(datePublished);
-        postEntity.setDatePublished(fecha);
-        return postService.updatePost(postEntity);
+    @PutMapping(PostController.LIKE_PATH+"/give")
+    public ResponseEntity<MessageResponse> giveLike(
+            @RequestParam() String postId) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String email = authentication.getName();
+        return new ResponseEntity<>(postService.giveLike(email, new ObjectId(postId)), HttpStatus.OK);
     }
 
-    @DeleteMapping("/{id}")
-    @ResponseStatus(HttpStatus.OK)
-    public String deletePost(@PathVariable(value = "id") ObjectId idPost) {
-        return postService.deletePost(idPost);
+    @PutMapping(PostController.LIKE_PATH+"/remove")
+    public ResponseEntity<MessageResponse> removeLike(
+            @RequestParam() String postId) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String email = authentication.getName();
+        return new ResponseEntity<>(postService.removeLike(email, new ObjectId(postId)), HttpStatus.OK);
     }
 
-    @GetMapping("/student/{id}")
-    @ResponseStatus(HttpStatus.OK)
-    public List<PostDTO> findByStudent(@PathVariable(value = "id") ObjectId idStudent) {
-        return postService.findByStudentQuery(idStudent);
+    @GetMapping(PostController.LIKE_PATH)
+    public ResponseEntity<List<LikesResponse>> getLikes(@RequestParam String postId) {
+        return new ResponseEntity<>(postService.getLikes(new ObjectId(postId)), HttpStatus.OK);
     }
 
-    @GetMapping("/likes/{id}")
-    @ResponseStatus(HttpStatus.OK)
-    public Integer findLikesByStudent(@PathVariable(value = "id") ObjectId idStudent) {
-        return postService.getTotalLikesByStudent(idStudent);
+    @PostMapping(PostController.COMMENT_PATH)
+    public ResponseEntity<CommentsResponse> makeComment(
+            @RequestParam() String postId,
+            @RequestParam() String comment) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String email = authentication.getName();
+        return new ResponseEntity<>(postService.makeComment(email, new ObjectId(postId), comment), HttpStatus.OK);
     }
 
-    @GetMapping("/countPosts/{id}")
-    @ResponseStatus(HttpStatus.OK)
-    public Integer getcountPostsByStudentId(@PathVariable(value = "id") ObjectId idStudent) {
-        return postService.countPostsByStudentId(idStudent);
+    @DeleteMapping(PostController.COMMENT_PATH)
+    public ResponseEntity<MessageResponse> removeComment(
+            @RequestParam() String commentId,
+            @RequestParam() String postId) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String email = authentication.getName();
+        return new ResponseEntity<>(postService.removeComment(email, new ObjectId(commentId), new ObjectId(postId)), HttpStatus.OK);
     }
 
-    @GetMapping("/studentPageable/{id}")
-    @ResponseStatus(HttpStatus.OK)
-    public Page<PostDTO> findByStudentIdPageable(
-            @PathVariable(value = "id") ObjectId idStudent,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "5") int size) {
-        return postService.findByIdStudent(idStudent, page, size);
-    }
-
-    @GetMapping("/allPageable")
-    @ResponseStatus(HttpStatus.OK)
-    public Page<PostDTO> findAllPosts(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "5") int size) {
-        return postService.getAllPosts(page, size);
-    }
-
-    @PutMapping("/likes")
-    @ResponseStatus(HttpStatus.OK)
-    public void updatePostsLikes(@RequestBody LikesDto likesDto) {
-        postService.updatePostsLikes(likesDto.getIdPost(), likesDto.getLikes());
+    @GetMapping(PostController.COMMENT_PATH)
+    public ResponseEntity<List<CommentsResponse>> getComments(@RequestParam String postId) {
+        return new ResponseEntity<>(postService.getComments(new ObjectId(postId)), HttpStatus.OK);
     }
 
 }

@@ -1,25 +1,26 @@
 package com.zam.uanet.services;
 
-import com.zam.uanet.dtos.PostDTO;
-import com.zam.uanet.entities.PostEntity;
+import com.zam.uanet.payload.response.CommentsResponse;
+import com.zam.uanet.payload.response.LikesResponse;
+import com.zam.uanet.payload.response.MessageResponse;
+import com.zam.uanet.payload.response.PostResponse;
 import org.bson.types.ObjectId;
 import org.springframework.data.domain.Page;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
+
 
 public interface PostService {
 
-    public PostEntity createPost(PostEntity postEntity);
-    public PostEntity getPost(ObjectId idPost);
-    public List<PostDTO> listPost();
-    public PostEntity updatePost(PostEntity postEntity);
-    public String deletePost(ObjectId idPost);
-
-    public List<PostDTO> findByStudentQuery(ObjectId idStudent);
-    public int getTotalLikesByStudent(ObjectId idStudent);
-    public int countPostsByStudentId(ObjectId idStudent);
-    Page<PostDTO> findByIdStudent(ObjectId idStudent, int page, int size);
-    Page<PostDTO> getAllPosts(int page, int size);
-    public void updatePostsLikes(ObjectId idPost, List<ObjectId> newLikes);
-
+    public PostResponse createPost(String email, String message, MultipartFile file) throws Exception;
+    public Page<PostResponse> getPosts(int page, int size);
+    public MessageResponse deletePost(String email, ObjectId postId) throws IOException;
+    public MessageResponse giveLike(String email, ObjectId postId);
+    public MessageResponse removeLike(String email, ObjectId postId);
+    public List<LikesResponse> getLikes(ObjectId postId);
+    public CommentsResponse makeComment(String email, ObjectId postId, String comment);
+    public MessageResponse removeComment(String email, ObjectId commentId, ObjectId postId);
+    public List<CommentsResponse> getComments(ObjectId postId);
 }
