@@ -81,6 +81,7 @@ public class PostServiceImpl implements PostService {
         if (file != null) {
             BlobDto blobDto = fireBaseStorageService.uploadFile(file, "posts/", postCollection.getPostId().toHexString());
             postCollection.setImage(blobDto.getUrl());
+            postCollection.setFileType(file.getContentType());
             postCreated = postRepository.save(postCollection);
         }
         log.info("Post was created successfully by {}", personCollection.getFullName());
@@ -119,6 +120,41 @@ public class PostServiceImpl implements PostService {
                     .image(posts.getContent().get(i).getImage())
                     .likes(posts.getContent().get(i).getLikes().stream().map(ObjectId::toString).collect(Collectors.toList()))
                     .comments(posts.getContent().get(i).getComments().stream().map(ObjectId::toString).collect(Collectors.toList()))
+                    .fileType(posts.getContent().get(i).getFileType())
+                    .build();
+            listPosts.add(postResponse);
+        }
+        return new PageImpl<>(listPosts, pageable, posts.getTotalElements());
+    }
+
+    @Override
+    public Page<PostResponse> getPostsByUser(ObjectId personId, int page, int size) {
+        PersonCollection personToValidate = personRepository.findById(personId).orElseThrow(() -> {
+            return new NotFoundException("Person not found");
+        });
+
+        Sort.Direction direction = Sort.Direction.DESC;
+        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, "datePublished"));
+
+        Page<PostCollection> posts = postRepository.findByPersonId(personId, pageable);
+        List<PostResponse> listPosts = new ArrayList<>();
+        for (int i = 0; i < posts.getContent().size(); i++) {
+            PersonCollection personCollection = personRepository.findById(posts.getContent().get(i).getPersonId()).orElseThrow(() -> {
+                return new NotFoundException("Person doest not exist");
+            });
+
+            PostResponse postResponse = PostResponse.builder()
+                    .postId(posts.getContent().get(i).getPostId().toHexString())
+                    .personId(posts.getContent().get(i).getPersonId().toHexString())
+                    .personName(personCollection.getFullName())
+                    .photoProfile(personCollection.getPhotoProfile())
+                    .nickName(personCollection.getNickname())
+                    .message(posts.getContent().get(i).getMessage())
+                    .datePublished(posts.getContent().get(i).getDatePublished())
+                    .image(posts.getContent().get(i).getImage())
+                    .likes(posts.getContent().get(i).getLikes().stream().map(ObjectId::toString).collect(Collectors.toList()))
+                    .comments(posts.getContent().get(i).getComments().stream().map(ObjectId::toString).collect(Collectors.toList()))
+                    .fileType(posts.getContent().get(i).getFileType())
                     .build();
             listPosts.add(postResponse);
         }

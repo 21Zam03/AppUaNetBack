@@ -16,6 +16,7 @@ public interface PostService {
 
     public PostResponse createPost(String email, String message, MultipartFile file) throws Exception;
     public Page<PostResponse> getPosts(int page, int size);
+    public Page<PostResponse> getPostsByUser(ObjectId personId, int page, int size);
     public MessageResponse deletePost(String email, ObjectId postId) throws IOException;
     public MessageResponse giveLike(String email, ObjectId postId);
     public MessageResponse removeLike(String email, ObjectId postId);

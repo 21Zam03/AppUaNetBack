@@ -4,7 +4,6 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.bson.types.ObjectId;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -23,6 +22,7 @@ public class PostResponse {
     private String message;
     private LocalDateTime datePublished;
     private String image;
+    private String fileType;
     private List<String> likes;
     private List<String> comments;
 

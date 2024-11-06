@@ -58,6 +58,13 @@ public class PostController {
         return postService.getPosts(page, size);
     }
 
+    @GetMapping("/person")
+    public Page<PostResponse> getAllPostsByPerson(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "5") int size, @RequestParam String personId) {
+        return postService.getPostsByUser(new ObjectId(personId), page, size);
+    }
+
     @PutMapping(PostController.LIKE_PATH+"/give")
     public ResponseEntity<MessageResponse> giveLike(
             @RequestParam() String postId) {

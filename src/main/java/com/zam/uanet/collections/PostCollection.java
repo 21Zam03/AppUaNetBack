@@ -20,6 +20,7 @@ public class PostCollection {
     private String message;
     private LocalDateTime datePublished;
     private String image;
+    private String fileType;
     private List<ObjectId> likes;
     private List<ObjectId> comments;
     //private List<ObjectId> saves;
