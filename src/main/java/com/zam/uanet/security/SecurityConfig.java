@@ -1,6 +1,6 @@
 package com.zam.uanet.security;
 
-import com.zam.uanet.security.filter.JwtCookieTokenFilter;
+import com.zam.uanet.security.filters.JwtCookieTokenFilter;
 import com.zam.uanet.security.services.UserDetailsServiceImpl;
 import com.zam.uanet.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -50,7 +50,6 @@ public class SecurityConfig {
                 })
                 .addFilterBefore(new JwtCookieTokenFilter(jwtUtil), BasicAuthenticationFilter.class);
                 //.addFilterBefore(new JwtTokenValidator(jwtUtil), BasicAuthenticationFilter.class);
-        //.httpBasic(Customizer.withDefaults());
         return http.build();
     }
 

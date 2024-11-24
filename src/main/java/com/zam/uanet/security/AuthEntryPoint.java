@@ -1,6 +1,5 @@
 package com.zam.uanet.security;
 
-import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
@@ -19,14 +18,14 @@ public class AuthEntryPoint implements AuthenticationEntryPoint {
 
     @Override
     public void commence(HttpServletRequest request, HttpServletResponse response,
-                         AuthenticationException authException) throws IOException, ServletException {
+                         AuthenticationException authException) throws IOException {
         logger.error("Unauthorized error: {}", authException.getMessage());
 
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
 
         String jsonResponse = String.format("{\"error\": \"%s\", \"message\": \"%s\"}",
-                "Unauthorized",
+                "Unauthorized access",
                 "Authentication token was either missing or invalid.");
         response.getWriter().write(jsonResponse);
     }

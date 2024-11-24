@@ -1,4 +1,4 @@
-package com.zam.uanet.security.filter;
+package com.zam.uanet.security.filters;
 
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.zam.uanet.util.JwtUtil;
