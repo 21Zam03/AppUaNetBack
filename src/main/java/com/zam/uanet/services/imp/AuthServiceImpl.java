@@ -1,14 +1,17 @@
 package com.zam.uanet.services.imp;
 
+import com.auth0.jwt.interfaces.DecodedJWT;
 import com.zam.uanet.collections.RoleCollection;
 import com.zam.uanet.collections.PersonCollection;
 import com.zam.uanet.collections.UserCollection;
 import com.zam.uanet.exceptions.DuplicateException;
 import com.zam.uanet.exceptions.NotFoundException;
+import com.zam.uanet.payload.request.InfoUserRequest;
 import com.zam.uanet.payload.request.SignInRequest;
 import com.zam.uanet.payload.request.SignUpRequest;
 import com.zam.uanet.payload.response.SignInResponse;
 import com.zam.uanet.payload.response.SignUpResponse;
+import com.zam.uanet.payload.response.UserLoggedResponse;
 import com.zam.uanet.repositories.*;
 import com.zam.uanet.services.AuthService;
 import com.zam.uanet.util.JwtUtil;
@@ -19,7 +22,6 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -113,9 +115,7 @@ public class AuthServiceImpl implements AuthService {
                     return new UsernameNotFoundException("Permission does not exist");
                 }).getName())));
 
-        SecurityContext context = SecurityContextHolder.getContext();
-        Authentication authentication = new UsernamePasswordAuthenticationToken(userCreated.getEmail(), userCreated.getPassword(), authorityList);
-        String accessToken = jwtUtil.createToken(authentication);
+        String accessToken = jwtUtil.createToken(userCreated.getEmail(), authorityList);
 
         log.info("Client was registered successfully, email: {} ", signUpRequest.getEmail());
 
@@ -140,11 +140,27 @@ public class AuthServiceImpl implements AuthService {
         Authentication authentication = authenticate(email, password);
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
-        String accessToken = jwtUtil.createToken(authentication);
-
-        UserCollection userCollection = userRepository.findByEmail(email).orElseThrow(()->{
+        UserCollection userCollection = userRepository.findByEmail(authentication.getName()).orElseThrow(()->{
             return new NotFoundException("User not found");
         });
+
+
+        List<SimpleGrantedAuthority> authorityList = new ArrayList<>();
+
+        userCollection.getRoleList()
+                .forEach(role -> authorityList
+                        .add(new SimpleGrantedAuthority("ROLE_".concat(roleRepository.findById(role).orElseThrow(() -> {
+                            return new UsernameNotFoundException("Role does not exist");
+                        }).getRoleName()))));
+        userCollection.getRoleList().stream()
+                .flatMap(role -> roleRepository.findById(role).orElseThrow(() -> {
+                    return new UsernameNotFoundException("Role does not exist");
+                }).getPermissionList().stream())
+                .forEach(permission -> authorityList.add(new SimpleGrantedAuthority(permissionRepository.findById(permission).orElseThrow(() -> {
+                    return new UsernameNotFoundException("Permission "+permission+" does not exist");
+                }).getName())));
+        String accessToken = jwtUtil.createToken(userCollection.getEmail(), authorityList);
+
 
         PersonCollection personCollection = personRepository.findByUserId(userCollection.getIdUser()).orElseThrow(() -> {
             return new NotFoundException("person not found");
@@ -160,6 +176,63 @@ public class AuthServiceImpl implements AuthService {
                 .message("Welcome "+personCollection.getFullName()+" to UA NET")
                 .token(accessToken)
                 .status(200)
+                .build();
+    }
+
+    @Override
+    public UserLoggedResponse validateSession(String token) {
+        DecodedJWT decodedJWT = jwtUtil.verifyToken(token);
+        String email = jwtUtil.extractUsername(decodedJWT);
+        UserCollection userCollection = userRepository.findByEmail(email).orElseThrow(() -> {
+            return new NotFoundException("User not found");
+        });
+
+        PersonCollection personCollection = personRepository.findByUserId(userCollection.getIdUser()).orElseThrow(() -> {
+            return new NotFoundException("Person not found");
+        });
+
+        return UserLoggedResponse.builder()
+                .personId(personCollection.getPersonId().toHexString())
+                .email(email)
+                .picturePhoto(personCollection.getPhotoProfile())
+                .fullName(personCollection.getFullName())
+                .nickName(personCollection.getNickname())
+                .roles(userCollection.getRoleList().stream().map(ObjectId::toString).collect(Collectors.toList()))
+                .district(personCollection.getDistrict())
+                .career(personCollection.getCareer())
+                .build();
+    }
+
+    @Override
+    public UserLoggedResponse addInfoUser(InfoUserRequest infoUserRequest) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        UserCollection userCollection = userRepository.findByEmail(authentication.getName()).orElseThrow(() -> {
+            return new NotFoundException("User not found");
+        });
+        PersonCollection personCollection = personRepository.findByUserId(userCollection.getIdUser()).orElseThrow(() -> {
+            return new NotFoundException("Person not found");
+        });
+        personCollection.setDistrict(infoUserRequest.getDistrict());
+        personCollection.setCareer(infoUserRequest.getCareer());
+        personCollection.setGenre(infoUserRequest.getGenre());
+        personRepository.save(personCollection);
+
+        RoleCollection role = roleRepository.findById(new ObjectId(infoUserRequest.getRoleId())).orElseThrow(() -> {
+            return new NotFoundException("Role not found");
+        });
+
+        userCollection.setRoleList(List.of(role.getRoleId()));
+        userRepository.save(userCollection);
+
+        return UserLoggedResponse.builder()
+                .personId(personCollection.getPersonId().toHexString())
+                .email(authentication.getName())
+                .picturePhoto(personCollection.getPhotoProfile())
+                .fullName(personCollection.getFullName())
+                .nickName(personCollection.getNickname())
+                .roles(userCollection.getRoleList().stream().map(ObjectId::toString).collect(Collectors.toList()))
+                .career(personCollection.getCareer())
+                .district(personCollection.getDistrict())
                 .build();
     }
 

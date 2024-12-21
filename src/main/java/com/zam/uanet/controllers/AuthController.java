@@ -1,20 +1,20 @@
 package com.zam.uanet.controllers;
 
+import com.zam.uanet.payload.request.InfoUserRequest;
 import com.zam.uanet.payload.request.SignInRequest;
 import com.zam.uanet.payload.request.SignUpRequest;
 import com.zam.uanet.payload.response.SignInResponse;
 import com.zam.uanet.payload.response.SignUpResponse;
+import com.zam.uanet.payload.response.UserLoggedResponse;
 import com.zam.uanet.services.AuthService;
 import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping(AuthController.API_PATH)
@@ -68,6 +68,33 @@ public class AuthController {
         cookie.setMaxAge(0);
         response.addCookie(cookie);
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+    }
+
+    @GetMapping("/validate")
+    public ResponseEntity<?> validate(HttpServletRequest request) {
+        String token = extractTokenFromCookie(request);
+        if (token == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("No token provided on cookie: Usuario no esta logueado");
+        }
+        UserLoggedResponse userLoggedResponse = authService.validateSession(token);
+        return new ResponseEntity<>(userLoggedResponse, HttpStatus.OK);
+    }
+
+    @PutMapping("/info")
+    public ResponseEntity<?> addInfo(@RequestBody InfoUserRequest infoUserRequest) {
+        return new ResponseEntity<>(authService.addInfoUser(infoUserRequest), HttpStatus.OK);
+    }
+
+    private String extractTokenFromCookie(HttpServletRequest request) {
+        Cookie[] cookies = request.getCookies();
+        if (cookies != null) {
+            for (Cookie cookie : cookies) {
+                if ("auth_token".equals(cookie.getName())) {
+                    return cookie.getValue();
+                }
+            }
+        }
+        return null;
     }
 
 }

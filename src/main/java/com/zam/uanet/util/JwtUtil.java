@@ -7,10 +7,10 @@ import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Component;
 
+import java.util.Collection;
 import java.util.Date;
 import java.util.Map;
 import java.util.UUID;
@@ -25,11 +25,10 @@ public class JwtUtil {
     @Value("${security.jwt.user.generator}")
     private String userGenerator;
 
-    public String createToken(Authentication authentication) {
+    public String createToken(String userName, Collection<? extends GrantedAuthority> authorities) {
         Algorithm algorithm = Algorithm.HMAC256(this.privateKey);
-        String userName = authentication.getPrincipal().toString();
 
-        String authorities = authentication.getAuthorities()
+        String authoritiesString = authorities
                 .stream()
                 .map(GrantedAuthority::getAuthority)
                 .collect(Collectors.joining(","));
@@ -37,7 +36,7 @@ public class JwtUtil {
         return JWT.create()
                 .withIssuer(this.userGenerator)
                 .withSubject(userName)
-                .withClaim("authorities", authorities)
+                .withClaim("authorities", authoritiesString)
                 .withIssuedAt(new Date())
                 .withExpiresAt(new Date(System.currentTimeMillis() + 1800000))
                 .withJWTId(UUID.randomUUID().toString())

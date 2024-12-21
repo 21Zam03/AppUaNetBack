@@ -13,7 +13,8 @@ import java.util.Optional;
 @Repository
 public interface PersonRepository extends MongoRepository<PersonCollection, ObjectId> {
 
-    public Optional<PersonCollection> findByUserId(ObjectId idUser);
+    @Query("{ 'userId': ?0}")
+    public Optional<PersonCollection> findByUserId(ObjectId userId);
 
     @Aggregation(pipeline = {
             "{ $match: { '_id': { $ne: ?0 } } }",  // Excluye el documento con el ID especificado
